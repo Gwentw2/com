@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; }
-    input, button { width: 100%; padding: 8px; margin: 5px 0; font-size: 1em; }
+    input, button, select { width: 100%; padding: 8px; margin: 5px 0; font-size: 1em; }
     .event { margin: 10px 0; border: 1px solid #ccc; padding: 10px; border-radius: 10px; }
     #adminPanel { display: none; border-top: 1px solid #ccc; margin-top: 20px; padding-top: 10px; }
     .event button { margin-top: 5px; }
@@ -46,21 +46,20 @@
 
 <script>
   const ADMIN_USERS = {
-    "Gwen": "102",
-    "songan": "105"
+    "admin": "1234",
+    "samantha": "5678"
   };
 
   let currentDate = "";
   let editIndex = -1;
 
   document.getElementById("date").value = new Date().toISOString().split("T")[0];
-
   document.getElementById("loginButton").addEventListener("click", login);
 
   function formatTime(timeStr) {
     let [h, m] = timeStr.split(":");
     h = parseInt(h);
-    m = m.padStart(2, "0"); // 確保分鐘兩位數
+    m = m.padStart(2, "0");
     return `${h}:${m}`;
   }
 
@@ -183,12 +182,13 @@
     editIndex = index;
   }
 
-  // 初始化登入狀態
+  // 自動登入（若登入過）
   const savedUser = localStorage.getItem("loggedInUser");
   if (savedUser && ADMIN_USERS[savedUser]) {
     setLoginUI(savedUser);
   }
 
+  // 預設載入行程
   loadSchedule();
 </script>
 
