@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>KSS 4F</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; }
+    input, button { width: 100%; padding: 8px; margin: 5px 0; font-size: 1em; }
+    .event { margin: 10px 0; border: 1px solid #ccc; padding: 10px; border-radius: 10px; }
+    #adminPanel { display: none; border-top: 1px solid #ccc; margin-top: 20px; padding-top: 10px; }
+    .event button { margin-top: 5px; }
+  </style>
+</head>
+<body>
+
+<h2>📅 KSS 4F</h2>
+
+<label>選擇日期：
+  <input type="date" id="date" />
+</label>
+<button onclick="loadSchedule()">查詢行程</button>
+
+<div id="scheduleList"></div>
+
+<hr>
+
+<h3>🔐 管理者登入</h3>
+<div id="loginForm">
+  <input type="text" id="username" placeholder="帳號" />
+  <input type="password" id="password" placeholder="密碼" />
+  <button id="loginButton">登入</button>
+</div>
+<div id="welcomeMsg" style="display:none;">
+  👋 歡迎管理者：<span id="welcomeUser"></span>
+  <button onclick="logout()">登出</button>
+</div>
+
+<div id="adminPanel">
+  <h3 id="formTitle">✏️ 新增行程</h3>
+  <input type="time" id="start" step="600">
+  <input type="time" id="end" step="600">
+  <input type="text" id="title" placeholder="行程內容">
+  <button onclick="addOrUpdateSchedule()">儲存行程</button>
+</div>
+
+<script>
+  const ADMIN_USERS = {
+    "Gwen": "102",
+    "songan": "105"
+  };
+
+  let currentDate = "";
+  let editIndex = -1;
+
+  document.getElementById("date").value = new Date().toISOString().split("T")[0];
+
+  document.getElementById("loginButton").addEventListener("click", login);
+
+  function formatTime(timeStr) {
+    let [h, m] = timeStr.split(":");
+    h = parseInt(h);
+    m = m.padStart(2, "0"); // 確保分鐘兩位數
+    return `${h}:${m}`;
+  }
+
+  function getScheduleData() {
+    return JSON.parse(localStorage.getItem("schedules") || "{}");
+  }
+
+  function saveScheduleData(data) {
+    localStorage.setItem("schedules", JSON.stringify(data));
+  }
+
+  function loadSchedule() {
+    const date = document.getElementById("date").value;
+    currentDate = date;
+    const list = document.getElementById("scheduleList");
+    const schedules = getScheduleData();
+    const todaySchedule = schedules[date] || [];
+
+    list.innerHTML = "";
+    if (todaySchedule.length === 0) {
+      list.textContent = "這一天沒有行程";
+      return;
+    }
+
+    todaySchedule.forEach((item, index) => {
+      const div = document.createElement("div");
+      div.className = "event";
+      const start = formatTime(item.start);
+      const end = formatTime(item.end);
+      div.innerHTML = `<strong>${start} 到 ${end}</strong> - ${item.title}`;
+      if (isLoggedIn()) {
+        div.innerHTML += `
+          <br>
+          <button onclick="startEdit(${index})">編輯</button>
+          <button onclick="deleteSchedule(${index})">刪除</button>`;
+      }
+      list.appendChild(div);
+    });
+  }
+
+  function login() {
+    const user = document.getElementById("username").value.trim();
+    const pass = document.getElementById("password").value;
+
+    if (ADMIN_USERS[user] && ADMIN_USERS[user] === pass) {
+      localStorage.setItem("loggedInUser", user);
+      setLoginUI(user);
+      alert(`歡迎 ${user}！登入成功`);
+    } else {
+      alert("帳號或密碼錯誤");
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem("loggedInUser");
+    document.getElementById("adminPanel").style.display = "none";
+    document.getElementById("loginForm").style.display = "block";
+    document.getElementById("welcomeMsg").style.display = "none";
+    editIndex = -1;
+    loadSchedule();
+  }
+
+  function setLoginUI(user) {
+    document.getElementById("adminPanel").style.display = "block";
+    document.getElementById("loginForm").style.display = "none";
+    document.getElementById("welcomeMsg").style.display = "block";
+    document.getElementById("welcomeUser").textContent = user;
+    loadSchedule();
+  }
+
+  function isLoggedIn() {
+    return !!localStorage.getItem("loggedInUser");
+  }
+
+  function addOrUpdateSchedule() {
+    const start = document.getElementById("start").value;
+    const end = document.getElementById("end").value;
+    const title = document.getElementById("title").value;
+
+    if (!start || !end || !title || !currentDate) {
+      alert("請完整填寫所有欄位");
+      return;
+    }
+
+    const schedules = getScheduleData();
+    if (!schedules[currentDate]) schedules[currentDate] = [];
+
+    if (editIndex === -1) {
+      schedules[currentDate].push({ start, end, title });
+    } else {
+      schedules[currentDate][editIndex] = { start, end, title };
+      editIndex = -1;
+      document.getElementById("formTitle").textContent = "✏️ 新增行程";
+    }
+
+    saveScheduleData(schedules);
+    alert("儲存成功！");
+    document.getElementById("start").value = "";
+    document.getElementById("end").value = "";
+    document.getElementById("title").value = "";
+    loadSchedule();
+  }
+
+  function deleteSchedule(index) {
+    if (!confirm("確定要刪除這個行程？")) return;
+
+    const schedules = getScheduleData();
+    schedules[currentDate].splice(index, 1);
+    saveScheduleData(schedules);
+    loadSchedule();
+  }
+
+  function startEdit(index) {
+    const schedules = getScheduleData();
+    const item = schedules[currentDate][index];
+    document.getElementById("start").value = item.start;
+    document.getElementById("end").value = item.end;
+    document.getElementById("title").value = item.title;
+    document.getElementById("formTitle").textContent = "🛠️ 編輯行程";
+    editIndex = index;
+  }
+
+  // 初始化登入狀態
+  const savedUser = localStorage.getItem("loggedInUser");
+  if (savedUser && ADMIN_USERS[savedUser]) {
+    setLoginUI(savedUser);
+  }
+
+  loadSchedule();
+</script>
+
+</body>
+</html>
